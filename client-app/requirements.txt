@@ -1,0 +1,6 @@
+python-socketio
+requests
+Pillow
+pycryptodome
+customtkinter
+packaging
