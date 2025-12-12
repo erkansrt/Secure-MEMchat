@@ -11,7 +11,7 @@ from common.steganography import LSBSteganography
 from common.crypto import DESManager
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'gizli_anahtar_burasi'
+app.config['SECRET_KEY'] = 'gizli_anahtar'
 app.config['UPLOAD_FOLDER'] = 'server/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -34,19 +34,30 @@ def register():
     file.save(filepath)
 
     extracted_password = stego.extract_password(filepath)
-    if not extracted_password: return jsonify({"status": "error", "message": "Şifre bulunamadı!"}), 400
+    if not extracted_password: return jsonify({"status": "error", "message": "Sifre bulunamadi!"}), 400
 
     success = db.add_user(username, extracted_password)
     if success: return jsonify({"status": "success", "message": f"{extracted_password}"}), 200
-    else: return jsonify({"status": "error", "message": "Kullanıcı adı alınmış"}), 409
+    else: return jsonify({"status": "error", "message": "Kullanici adi alinmis"}), 409
 
 @socketio.on('login')
 def handle_login(data):
     username = data['username']
+    # Kullanıcıyı online listesine ekle
     online_users[username] = request.sid
     print(f"[ONLINE] {username}")
-    emit('user_list_update', {'users': db.get_all_users(), 'online': list(online_users.keys())}, broadcast=True)
     
+    # GÜNCEL VERİYİ HAZIRLA
+    current_data = {'users': db.get_all_users(), 'online': list(online_users.keys())}
+    
+    # 1. HERKESE DUYUR (Mevcut kullanıcılar yeni geleni görsün)
+    emit('user_list_update', current_data, broadcast=True)
+    
+    # 2. YENİ GELENE ÖZEL OLARAK TEKRAR GÖNDER (Garanti olsun)
+    # Yeni giren kişi bazen broadcast'i kaçırabilir, ona özel elden veriyoruz.
+    emit('user_list_update', current_data, room=request.sid)
+    
+    # Offline mesajları kontrol et
     for sender, msg, ts in db.get_offline_messages(username):
         emit('receive_message', {'sender': sender, 'message': msg, 'is_offline': True}, room=request.sid)
 

@@ -4,7 +4,6 @@ import base64
 
 class DESManager:
     def __init__(self, key_string):
-        # DES anahtarı tam 8 byte olmalıdır.
         self.key = self._adjust_key(key_string)
         self.cipher = DES.new(self.key, DES.MODE_ECB)
 
